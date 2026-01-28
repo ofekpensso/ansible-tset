@@ -30,7 +30,7 @@ The goal was to provision two EC2 instances on AWS and deploy specific services 
 ├── README.md                   # Project documentation
 ├── ansible.cfg                 # Ansible configuration
 ├── aws_ec2.yml                 # AWS Dynamic Inventory plugin
-├── ny-key.pen                  # SSH Key (Excluded in real repos)
+├── my-key.pem                  # SSH Key (Excluded in real repos)
 │
 ├── site.yml                    # STAGE 1: Native installation playbook
 ├── site_docker.yml             # STAGE 2: Monolithic Docker playbook
