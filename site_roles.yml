@@ -1,0 +1,27 @@
+---
+- name: Master Playbook using Roles
+  hosts: aws_ec2
+  become: yes
+  remote_user: ubuntu
+  
+  vars:
+    ansible_ssh_private_key_file: "/home/ubuntu/ansible-test/my-key.pem"
+    my_owner_name: "ofekpenso"
+
+    port_map:
+      mysql: "3306:3306"
+      nginx: "80:80"
+
+    day_map:
+      Sunday: "0"
+      Monday: "1"
+      Tuesday: "2"
+      Wednesday: "3"
+      Thursday: "4"
+      Friday: "5"
+      Saturday: "6"
+
+  roles:
+    - common      
+    - docker        
+    - app_deploy  

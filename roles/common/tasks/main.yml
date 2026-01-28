@@ -1,0 +1,9 @@
+---
+- name: Safety Check - Verify Owner
+  fail:
+    msg: "Unauthorized Owner!"
+  when: tags.Owner != my_owner_name
+
+- name: Update Hostname
+  hostname:
+    name: "{{ tags.Name }}"

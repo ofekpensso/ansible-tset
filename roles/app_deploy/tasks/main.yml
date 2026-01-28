@@ -1,0 +1,33 @@
+---
+- name: Stop native services to free ports
+  service:
+    name: "{{ tags.Service }}"
+    state: stopped
+    enabled: no
+  ignore_errors: yes
+
+- name: Start Docker Container
+  community.docker.docker_container:
+    name: "{{ tags.Service }}"
+    image: "{{ tags.DockerImage }}:{{ tags.Version | default('latest') }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ port_map[tags.Service] }}"
+    env: "{{ {'MYSQL_ROOT_PASSWORD': 'password123'} if tags.Service == 'mysql' else {} }}"
+  when: tags.DockerImage is defined
+
+- name: Parse Restart Time Logic
+  set_fact:
+    cron_weekday: "{{ day_map[tags.Restart.split(' ')[0] | trim] }}"
+    cron_hour: "{{ '0' if 'midnight' in tags.Restart else (tags.Restart.split(' at ')[1].split(':')[0] | trim) }}"
+  when: tags.Restart is defined
+
+- name: Create Cron Job for Server Restart
+  cron:
+    name: "Scheduled Server Restart based on AWS Tag"
+    minute: "0"
+    hour: "{{ cron_hour }}"
+    weekday: "{{ cron_weekday }}"
+    job: "/sbin/shutdown -r now"
+  when: tags.Restart is defined
