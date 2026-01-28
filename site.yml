@@ -1,0 +1,76 @@
+---
+- name: Configure EC2 Instances based on Tags
+  hosts: aws_ec2
+  become: yes
+  remote_user: ubuntu
+  vars:
+    ansible_ssh_private_key_file: my-key.pem
+    my_owner_name: "ofekpenso"
+    package_map:
+      mysql: mysql-server
+      nginx: nginx
+    service_map:
+      mysql: mysql  
+      nginx: nginx
+    day_map:
+      Sunday: "0"
+      Monday: "1"
+      Tuesday: "2"
+      Wednesday: "3"
+      Thursday: "4"
+      Friday: "5"
+      Saturday: "6"   
+
+  tasks:
+    - name: Safety Check - Verify Owner Tag
+      fail:
+        msg: "Aborting! This server is owned by {{ tags.Owner }} and not by {{ my_owner_name }}"
+      when: tags.Owner != my_owner_name
+
+    - name: Update hostname based on AWS Name tag
+      hostname:
+        name: "{{ tags.Name }}"
+
+    - name: Update Apt Cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install Specific Version
+      apt:
+        name: "{{ package_map[tags.Service] }}={{ tags.Version }}*"
+        state: present
+        allow_downgrade: yes
+      when: tags.Service is defined and tags.Version is defined and tags.Version | length > 0
+
+    - name: Install Latest Version (Default)
+      apt:
+        name: "{{ package_map[tags.Service] }}"
+        state: latest
+      when: tags.Service is defined and (tags.Version is not defined or tags.Version | length == 0)      
+
+
+    - name: Ensure Service is started and enabled
+      service:
+        name: "{{ service_map[tags.Service] }}"
+        state: started
+        enabled: yes
+      when: tags.Service is defined
+
+    - name: Parse Restart Time Logic
+      set_fact:
+        cron_weekday: "{{ day_map[tags.Restart.split(' ')[0] | trim] }}"
+        
+        cron_hour: "{{ '0' if 'midnight' in tags.Restart else (tags.Restart.split(' at ')[1].split(':')[0] | trim) }}"
+      when: tags.Restart is defined
+
+
+    - name: Create Cron Job for Server Restart
+      cron:
+        name: "Scheduled Server Restart based on AWS Tag"
+        minute: "0"
+        hour: "{{ cron_hour }}"
+        weekday: "{{ cron_weekday }}"
+        job: "/sbin/shutdown -r now"
+      when: tags.Restart is defined    
+

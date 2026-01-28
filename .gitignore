@@ -1,0 +1,8 @@
+# Ignore private keys
+*.pem
+
+# Ignore Ansible retry files
+*.retry
+
+# Ignore temporary files
+.DS_Store
