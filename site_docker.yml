@@ -1,0 +1,52 @@
+---
+- name: Transition to Docker Containers
+  hosts: aws_ec2
+  become: yes
+  remote_user: ubuntu
+  vars:
+    ansible_ssh_private_key_file: "my-key.pem"
+    my_owner_name: "ofekpenso"
+
+    port_map:
+      mysql: "3306:3306"
+      nginx: "80:80"
+
+  tasks:
+    - name: Safety Check - Verify Owner
+      fail:
+        msg: "Unauthorized Owner!"
+      when: tags.Owner != my_owner_name
+
+    - name: Update Hostname
+      hostname:
+        name: "{{ tags.Name }}"
+
+    - name: Update Apt and Install Docker
+      apt:
+        name:
+          - docker.io
+          - python3-pip
+          - python3-docker  
+        state: present
+        update_cache: yes
+
+
+    - name: Stop native services to free ports
+      service:
+        name: "{{ tags.Service }}" 
+        state: stopped
+        enabled: no
+      ignore_errors: yes 
+
+    - name: Start Docker Container
+      community.docker.docker_container:
+        name: "{{ tags.Service }}" 
+        image: "{{ tags.DockerImage }}:{{ tags.Version | default('latest') }}"
+        state: started
+        restart_policy: always
+        ports:
+          - "{{ port_map[tags.Service] }}"
+        
+        env: "{{ {'MYSQL_ROOT_PASSWORD': 'password123'} if tags.Service == 'mysql' else {} }}"
+      
+      when: tags.DockerImage is defined
